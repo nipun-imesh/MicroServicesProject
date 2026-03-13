@@ -1,0 +1,23 @@
+jwt:
+  secret: agmsSecretKey1234567890ABCDEFGHIJKLMnopqrstuvwxyz
+
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: zone-service
+          uri: lb://zone-service
+          predicates:
+            - Path=/api/zones/**
+        - id: sensor-service
+          uri: lb://sensor-service
+          predicates:
+            - Path=/api/sensors/**
+        - id: automation-service
+          uri: lb://automation-service
+          predicates:
+            - Path=/api/automation/**
+        - id: crop-service
+          uri: lb://crop-service
+          predicates:
+            - Path=/api/crops/**

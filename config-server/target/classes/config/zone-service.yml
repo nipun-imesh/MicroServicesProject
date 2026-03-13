@@ -1,0 +1,15 @@
+server:
+  port: 8081
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+external:
+  iot:
+    base-url: http://104.211.95.241:8080/api
+    # Replace with a valid token from the external IoT API (POST /auth/login)
+    token: ""
+    username: agms_user
+    password: "123456"
