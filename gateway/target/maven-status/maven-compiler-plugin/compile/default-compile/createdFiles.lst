@@ -1,0 +1,3 @@
+com\agms\gateway\GatewayApplication.class
+com\agms\gateway\controller\AuthController.class
+com\agms\gateway\security\JwtAuthFilter.class

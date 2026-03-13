@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: gateway
+  cloud:
+    config:
+      uri: http://localhost:8888
+      fail-fast: false
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+server:
+  port: 8080
+
+# jwt.secret and route config are served by Config Server (config/gateway.yml)
+# Fallback values in case Config Server is unavailable:
+jwt:
+  secret: agmsSecretKey1234567890ABCDEFGHIJKLMnopqrstuvwxyz
