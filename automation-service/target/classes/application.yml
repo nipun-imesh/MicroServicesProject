@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: automation-service
+  cloud:
+    config:
+      uri: http://localhost:8888
+      fail-fast: false
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+server:
+  port: 8083
