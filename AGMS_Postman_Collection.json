@@ -1,0 +1,371 @@
+{
+  "info": {
+    "_postman_id": "agms-collection-2026",
+    "name": "AGMS - Automated Greenhouse Management System",
+    "description": "Complete API test collection for the Automated Greenhouse Management System. All requests go through the API Gateway on port 8080.\n\n## Setup\n1. Start services in order: Config Server → Eureka → Gateway → Domain Services\n2. Call **POST /auth/token** to get a JWT token\n3. Set the `token` environment variable or paste the JWT in the Authorization header for all subsequent requests.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080", "type": "string" },
+    { "key": "token",    "value": "",                       "type": "string" },
+    { "key": "zone_id",  "value": "",                       "type": "string" },
+    { "key": "crop_id",  "value": "",                       "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Get JWT Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.accessToken) {",
+                  "    pm.collectionVariables.set('token', json.accessToken);",
+                  "    pm.test('Token saved to collection variable', () => pm.expect(json.accessToken).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"farmer1\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/auth/token", "host": ["{{base_url}}"], "path": ["auth", "token"] },
+            "description": "Obtain an internal AGMS JWT token. Credentials: farmer1 / password123 OR admin / admin123"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Zone Management Service",
+      "item": [
+        {
+          "name": "Create Zone (POST /api/zones)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.zoneId) {",
+                  "    pm.collectionVariables.set('zone_id', json.zoneId);",
+                  "    pm.test('Zone created and zoneId saved', () => pm.expect(json.zoneId).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tomato Zone A\",\n  \"description\": \"Primary tomato growing zone\",\n  \"minTemp\": 18,\n  \"maxTemp\": 30,\n  \"minHumidity\": 50,\n  \"maxHumidity\": 80\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/zones", "host": ["{{base_url}}"], "path": ["api", "zones"] },
+            "description": "Creates a new zone and registers a device in the External IoT API. minTemp must be strictly less than maxTemp."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Zone By ID (GET /api/zones/{id})",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/zones/{{zone_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "zones", "{{zone_id}}"]
+            },
+            "description": "Fetch details of a specific zone including deviceId from IoT registration."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Zone Thresholds (PUT /api/zones/{id})",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"minTemp\": 20,\n  \"maxTemp\": 32\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/zones/{{zone_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "zones", "{{zone_id}}"]
+            },
+            "description": "Update temperature thresholds for a zone. minTemp must remain strictly less than maxTemp."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Zone (DELETE /api/zones/{id})",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/zones/{{zone_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "zones", "{{zone_id}}"]
+            },
+            "description": "Removes a zone from the system. Returns 204 No Content on success."
+          },
+          "response": []
+        },
+        {
+          "name": "[Validation] Create Zone - Invalid (minTemp >= maxTemp)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Invalid Zone\",\n  \"minTemp\": 35,\n  \"maxTemp\": 20\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/zones", "host": ["{{base_url}}"], "path": ["api", "zones"] },
+            "description": "Should return 400 Bad Request because minTemp (35) >= maxTemp (20)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Sensor Telemetry Service",
+      "item": [
+        {
+          "name": "Get Latest Telemetry (GET /api/sensors/latest)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/sensors/latest",
+              "host": ["{{base_url}}"],
+              "path": ["api", "sensors", "latest"]
+            },
+            "description": "Returns the most recently fetched telemetry reading from the External IoT API. The sensor service polls every 10 seconds automatically."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Automation & Control Service",
+      "item": [
+        {
+          "name": "Process Telemetry (POST /api/automation/process)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"test-device-001\",\n  \"zoneId\": \"{{zone_id}}\",\n  \"value\": {\n    \"temperature\": 35.5,\n    \"tempUnit\": \"CELSIUS\",\n    \"humidity\": 60.0,\n    \"humidityUnit\": \"PERCENTAGE\"\n  },\n  \"capturedAt\": \"2026-03-08T10:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/automation/process",
+              "host": ["{{base_url}}"],
+              "path": ["api", "automation", "process"]
+            },
+            "description": "Manually submit telemetry for rule evaluation. Uses Feign to call Zone Service for thresholds. Temperature > maxTemp triggers TURN_FAN_ON; Temperature < minTemp triggers TURN_HEATER_ON."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Automation Logs (GET /api/automation/logs)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/automation/logs",
+              "host": ["{{base_url}}"],
+              "path": ["api", "automation", "logs"]
+            },
+            "description": "Returns all triggered automation actions with zone, temperature, and timestamp details."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Crop Inventory Service",
+      "item": [
+        {
+          "name": "Register Crop Batch (POST /api/crops)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.collectionVariables.set('crop_id', json.id);",
+                  "    pm.test('Crop registered and id saved', () => pm.expect(json.status).to.equal('SEEDLING'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Cherry Tomatoes\",\n  \"variety\": \"Red Cherry\",\n  \"quantity\": 500,\n  \"unit\": \"plants\",\n  \"zoneId\": \"{{zone_id}}\",\n  \"plantedDate\": \"2026-03-08\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/crops", "host": ["{{base_url}}"], "path": ["api", "crops"] },
+            "description": "Register a new crop batch. Initial status is always SEEDLING."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Crop Status - VEGETATIVE (PUT /api/crops/{id}/status)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"VEGETATIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/crops/{{crop_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "crops", "{{crop_id}}", "status"]
+            },
+            "description": "Advances crop to VEGETATIVE stage. Valid transitions: SEEDLING → VEGETATIVE → HARVESTED"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Crop Status - HARVESTED (PUT /api/crops/{id}/status)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"HARVESTED\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/crops/{{crop_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "crops", "{{crop_id}}", "status"]
+            },
+            "description": "Advances crop to HARVESTED stage."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Crops (GET /api/crops)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": { "raw": "{{base_url}}/api/crops", "host": ["{{base_url}}"], "path": ["api", "crops"] },
+            "description": "Returns the full crop inventory with lifecycle status."
+          },
+          "response": []
+        },
+        {
+          "name": "[Validation] Invalid Status Transition",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type",  "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SEEDLING\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/crops/{{crop_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "crops", "{{crop_id}}", "status"]
+            },
+            "description": "Should return 400 Bad Request - cannot go backwards in the state machine."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Security Tests",
+      "item": [
+        {
+          "name": "[Security] No Token - Should Return 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/zones/some-id", "host": ["{{base_url}}"], "path": ["api", "zones", "some-id"] },
+            "description": "Request without Authorization header. Should return 401 Unauthorized from the Gateway JWT filter."
+          },
+          "response": []
+        },
+        {
+          "name": "[Security] Invalid Token - Should Return 401",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer invalid.token.here" }],
+            "url": { "raw": "{{base_url}}/api/crops", "host": ["{{base_url}}"], "path": ["api", "crops"] },
+            "description": "Request with a malformed/invalid JWT token. Should return 401 Unauthorized."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "7. Infrastructure Health",
+      "item": [
+        {
+          "name": "Gateway Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/actuator/health", "host": ["{{base_url}}"], "path": ["actuator", "health"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Eureka Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "http://localhost:8761", "host": ["http://localhost:8761"] },
+            "description": "Open in browser to see the Eureka dashboard with all registered services."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
